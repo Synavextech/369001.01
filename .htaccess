@@ -1,0 +1,8 @@
+RewriteEngine On
+
+# Skip rewrite for existing files/directories (e.g., assets)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Rewrite all other requests to index.html for React routing
+RewriteRule ^ index.html [L]
