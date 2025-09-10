@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { InternationalPhoneInput } from "@/components/ui/phone-input";
+import { PasswordStrength } from "@/components/ui/password-strength";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
@@ -13,6 +15,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { insertUserSchema, loginSchema, type InsertUser, type LoginCredentials } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { ButtonLoader } from "@/components/LoadingSpinner";
 
 export default function Auth() {
   const [, setLocation] = useLocation();
@@ -39,6 +42,9 @@ export default function Auth() {
       referredBy: null,
     },
   });
+
+  const [passwordValue, setPasswordValue] = useState("");
+  const [confirmPasswordValue, setConfirmPasswordValue] = useState("");
 
   const loginMutation = useMutation({
     mutationFn: async (data: LoginCredentials) => {
@@ -113,17 +119,31 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-6 bg-gradient-to-br from-background to-muted">
-      <Card className="w-full max-w-md shadow-xl">
-        <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-bold">Welcome to ProMo-G</CardTitle>
-          <p className="text-muted-foreground">Geek 🤓🤓</p>
+    <div className="min-h-screen flex items-center justify-center px-6 bg-gradient-to-br from-background via-background to-muted/30">
+      <Card className="w-full max-w-md shadow-xl border-border/50 backdrop-blur-sm">
+        <CardHeader className="text-center space-y-3">
+          <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            Welcome to ProMo-G
+          </CardTitle>
+          <p className="text-muted-foreground flex items-center justify-center gap-2">
+            <span className="text-accent">Geek</span> 🤓🤓
+          </p>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Login</TabsTrigger>
-              <TabsTrigger value="register">Register</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 bg-muted/50 p-1">
+              <TabsTrigger
+                value="login"
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all duration-200"
+              >
+                Login
+              </TabsTrigger>
+              <TabsTrigger
+                value="register"
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all duration-200"
+              >
+                Register
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="login">
@@ -145,7 +165,6 @@ export default function Auth() {
                   <Input
                     id="password"
                     type="password"
-                    maxLength={8}
                     placeholder="••••••••"
                     {...loginForm.register("password")}
                   />
@@ -153,11 +172,12 @@ export default function Auth() {
                     <p className="text-sm text-destructive">{loginForm.formState.errors.password.message}</p>
                   )}
                 </div>
-                <Button 
-                  type="submit" 
-                  className="w-full" 
+                <Button
+                  type="submit"
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-200 shadow-lg hover:shadow-xl"
                   disabled={loginMutation.isPending}
                 >
+                  {loginMutation.isPending && <ButtonLoader />}
                   {loginMutation.isPending ? "Signing In..." : "Sign In"}
                 </Button>
               </form>
@@ -181,11 +201,11 @@ export default function Auth() {
                 </div>
                 <div>
                   <Label htmlFor="register-phone">Phone Number</Label>
-                  <Input
-                    id="register-phone"
-                    type="tel"
-                    placeholder="+254 700 000 000"
-                    {...registerForm.register("phone")}
+                  <InternationalPhoneInput
+                    value={registerForm.watch("phone") || ""}
+                    onChange={(value) => registerForm.setValue("phone", value || "")}
+                    placeholder="Enter phone number"
+                    error={!!registerForm.formState.errors.phone}
                   />
                   {registerForm.formState.errors.phone && (
                     <p className="text-sm text-destructive">{registerForm.formState.errors.phone.message}</p>
@@ -208,22 +228,25 @@ export default function Auth() {
                   <Input
                     id="register-password"
                     type="password"
-                    maxLength={8}
-                    placeholder="••••••••"
-                    {...registerForm.register("password")}
+                    placeholder="Create a strong password"
+                    {...registerForm.register("password", {
+                      onChange: (e) => setPasswordValue(e.target.value)
+                    })}
                   />
                   {registerForm.formState.errors.password && (
                     <p className="text-sm text-destructive">{registerForm.formState.errors.password.message}</p>
                   )}
+                  <PasswordStrength password={passwordValue} className="mt-2" />
                 </div>
                 <div>
                   <Label htmlFor="confirm-password">Confirm Password</Label>
                   <Input
                     id="confirm-password"
                     type="password"
-                    maxLength={8}
-                    placeholder="••••••••"
-                    {...registerForm.register("confirmPassword")}
+                    placeholder="Confirm your password"
+                    {...registerForm.register("confirmPassword", {
+                      onChange: (e) => setConfirmPasswordValue(e.target.value)
+                    })}
                   />
                   {registerForm.formState.errors.confirmPassword && (
                     <p className="text-sm text-destructive">{registerForm.formState.errors.confirmPassword.message}</p>
@@ -245,11 +268,12 @@ export default function Auth() {
                     <p className="text-sm text-destructive">{registerForm.formState.errors.gender.message}</p>
                   )}
                 </div>
-                <Button 
-                  type="submit" 
-                  className="w-full" 
-                  disabled={registerMutation.isPending}
+                <Button
+                  type="submit"
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-200 shadow-lg hover:shadow-xl"
+                  disabled={registerMutation.isPending || !registerForm.formState.isValid}
                 >
+                  {registerMutation.isPending && <ButtonLoader />}
                   {registerMutation.isPending ? "Creating Account..." : "Create Account"}
                 </Button>
               </form>
@@ -257,12 +281,12 @@ export default function Auth() {
           </Tabs>
 
           <div className="mt-6 text-center">
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               onClick={() => setLocation("/")}
-              className="text-accent hover:underline"
+              className="text-accent hover:text-accent/80 hover:bg-accent/10 transition-all duration-200"
             >
-              ← Back to Home 
+              ← Back to Home
             </Button>
           </div>
         </CardContent>

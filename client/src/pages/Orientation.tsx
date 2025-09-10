@@ -10,6 +10,8 @@ import { CheckCircle2, Circle, Lock, ExternalLink, Clock, Coins, RefreshCw } fro
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import type { Task } from "@shared/schema";
+import { ComponentLoader } from "@/components/LoadingSpinner";
+import { withOfflineSupport } from "@/lib/offlineStorage";
 
 const categoryInfo = {
   main: { title: "Main Tasks", description: "Essential platform tasks" },
@@ -26,12 +28,23 @@ export function Orientation() {
   const [hasReviewed, setHasReviewed] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
-  // Fetch orientation tasks
+  // Fetch orientation tasks with offline support
   const { data: tasks = [], isLoading, error, refetch } = useQuery<Task[]>({
     queryKey: ['/api/tasks/orientation'],
+    queryFn: () => withOfflineSupport(
+      async () => {
+        const response = await fetch('/api/tasks/orientation');
+        if (!response.ok) throw new Error('Failed to fetch tasks');
+        const data = await response.json();
+        return data.success ? data.data : data;
+      },
+      [], // fallback to empty array
+      'orientation-tasks' // cache key
+    ),
     refetchInterval: 5000, // Auto-refresh every 5 seconds
     retry: 3,
     retryDelay: 1000,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   // Group tasks by category
@@ -63,14 +76,7 @@ export function Orientation() {
   };
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading orientation tasks...</p>
-        </div>
-      </div>
-    );
+    return <ComponentLoader text="Loading orientation tasks..." />;
   }
 
   if (error || tasks.length === 0) {

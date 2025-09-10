@@ -1,4 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { User } from "@shared/schema";
+
+interface UserWithApproval extends User {
+  approvalStatus: 'pending' | 'approved' | 'rejected';
+}
 import { Clock, CheckCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
@@ -10,7 +15,7 @@ export default function WaitingApproval() {
   const [, setLocation] = useLocation();
 
   // Poll user status every 5 seconds to check if approved
-  const { data: updatedUser } = useQuery({
+  const { data: updatedUser } = useQuery<UserWithApproval>({
     queryKey: [`/api/users/${user?.id}`],
     enabled: !!user?.id && user.approvalStatus === 'pending',
     refetchInterval: 5000,
@@ -28,9 +33,9 @@ export default function WaitingApproval() {
       return;
     }
 
-    // Update user state if approval status changes
-    if (updatedUser && updatedUser.approvalStatus !== 'pending') {
-      setUser(updatedUser);
+    // Update user state if approval status changes and is valid
+    if (updatedUser?.approvalStatus && updatedUser.approvalStatus !== 'pending') {
+      setUser(updatedUser as UserWithApproval);
       if (updatedUser.approvalStatus === 'approved') {
         setLocation("/home");
       }

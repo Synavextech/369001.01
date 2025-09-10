@@ -1,4 +1,23 @@
 import { useState } from "react";
+import type { Task, UserTask } from "@shared/schema";
+
+interface TaskType extends Task {
+  isOrientation: boolean;
+  title: string;
+  description: string;
+  reward: string;
+  minDuration: number;
+}
+
+interface UserTaskType extends Omit<UserTask, 'startedAt' | 'completedAt' | 'approvedAt'> {
+  id: number;
+  taskId: number;
+  startedAt: Date;
+  completedAt: Date | null;
+  approvedAt: Date | null;
+  status: 'pending' | 'approved' | 'rejected';
+  rejectionReason: string | null;
+}
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -66,12 +85,12 @@ export default function Tasks() {
   const orientationStatus = user?.orientationStatus as any;
   const isInOrientation = orientationStatus && !orientationStatus.overallCompleted;
 
-  const { data: tasks } = useQuery<any[]>({
+  const { data: tasks = [] } = useQuery<TaskType[]>({
     queryKey: ["/api/tasks", selectedCategory, user?.subscriptionTier],
     enabled: !!selectedCategory && !!user?.subscriptionTier,
   });
 
-  const { data: userTasks } = useQuery<any[]>({
+  const { data: userTasks = [] } = useQuery<UserTaskType[]>({
     queryKey: [`/api/user-tasks/${user?.id}`],
     enabled: !!user?.id,
   });
@@ -172,7 +191,7 @@ export default function Tasks() {
 
           <div className="grid gap-4">
             {tasks
-              ?.filter((task: any) => {
+              .filter((task) => {
                 // In orientation mode, show only orientation tasks
                 if (isInOrientation) {
                   return task.isOrientation === true;
@@ -180,7 +199,7 @@ export default function Tasks() {
                 // Otherwise, show only non-orientation tasks
                 return task.isOrientation === false;
               })
-              ?.map((task: any) => (
+              .map((task) => (
               <Card key={task.id}>
                 <CardHeader>
                   <div className="flex justify-between items-start">
@@ -333,13 +352,13 @@ export default function Tasks() {
                 </TableHeader>
                 <TableBody>
                   {userTasks?.length > 0 ? (
-                    userTasks.map((userTask: any) => (
+                    userTasks.map((userTask) => (
                       <TableRow key={userTask.id}>
                         <TableCell className="font-medium">
                           Task #{userTask.taskId}
                         </TableCell>
                         <TableCell>
-                          {new Date(userTask.startedAt).toLocaleDateString()}
+                          {userTask.startedAt.toLocaleDateString()}
                         </TableCell>
                         <TableCell>
                           <Badge

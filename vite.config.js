@@ -10,6 +10,17 @@ export default defineConfig({
     emptyOutDir: true,
   },
   publicDir: path.resolve(process.cwd(), 'client/public'),
+  server: {
+    port: 3000,
+    host: '127.0.0.1',
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:5000',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
+  },
   resolve: {
     alias: {
       '@': path.resolve(process.cwd(), 'client/src'),

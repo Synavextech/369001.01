@@ -1,8 +1,10 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertUserSchema, loginSchema, insertSubscriptionSchema, insertTaskSchema, insertUserTaskSchema, insertWithdrawalSchema, insertOrderSchema, insertPaymentMethodSchema, InsertOrder } from "@shared/schema";
 import { z } from "zod";
+import { handlePayPalWebhook, retryFailedPayment } from "./webhooks";
+import { authRateLimit, sendSuccess, AppError, asyncHandler } from "./middleware";
 
 // Subscription plan definitions
 const subscriptionPlans = [
@@ -45,49 +47,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   };
 
-  app.post("/api/auth/register", async (req, res) => {
-    try {
-      const userData = insertUserSchema.parse(req.body);
-      
-      // Check if user already exists
-      const existingUser = await storage.getUserByEmail(userData.email);
-      if (existingUser) {
-        return res.status(400).json({ message: "User already exists with this email" });
-      }
-
-      const user = await storage.createUser(userData);
-      const { password, ...userWithoutPassword } = user;
-
-      res.json({ user: userWithoutPassword });
-    } catch (error) {
-      res.status(400).json({ message: "Invalid user data", error });
+  app.post("/api/auth/register", authRateLimit, asyncHandler(async (req: Request, res: Response) => {
+    const userData = insertUserSchema.parse(req.body);
+    
+    // Check if user already exists
+    const existingUser = await storage.getUserByEmail(userData.email);
+    if (existingUser) {
+      throw new AppError("User already exists with this email", 409, "USER_EXISTS");
     }
-  });
 
-  app.post("/api/auth/login", async (req, res) => {
-    try {
-      const credentials = loginSchema.parse(req.body);
-      const user = await storage.authenticateUser(credentials);
-      
-      if (!user) {
-        return res.status(401).json({ message: "Invalid credentials" });
-      }
+    const user = await storage.createUser(userData);
+    const { password, ...userWithoutPassword } = user;
 
-      // Set secure cookie with user token
-      const token = Buffer.from(JSON.stringify({ userId: user.id, email: user.email })).toString('base64');
-      res.cookie('auth_token', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
-      });
+    sendSuccess(res, { user: userWithoutPassword }, "User registered successfully", 201);
+  }));
 
-      const { password, ...userWithoutPassword } = user;
-      res.json({ user: userWithoutPassword });
-    } catch (error) {
-      res.status(400).json({ message: "Invalid credentials" });
+  app.post("/api/auth/login", authRateLimit, asyncHandler(async (req: Request, res: Response) => {
+    const credentials = loginSchema.parse(req.body);
+    const user = await storage.authenticateUser(credentials);
+    
+    if (!user) {
+      throw new AppError("Invalid credentials", 401, "INVALID_CREDENTIALS");
     }
-  });
+
+    // Set secure cookie with user token
+    const token = Buffer.from(JSON.stringify({
+      userId: user.id,
+      email: user.email,
+      iat: Date.now()
+    })).toString('base64');
+    
+    res.cookie('auth_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+    });
+
+    const { password, ...userWithoutPassword } = user;
+    sendSuccess(res, { user: userWithoutPassword }, "Login successful");
+  }));
 
   // User routes
   app.get("/api/users/:id", async (req, res) => {
@@ -778,6 +777,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Continue with the PayPal capture
     await capturePaypalOrder(req, res);
   });
+
+  // Webhook routes
+  app.post("/api/webhooks/paypal", asyncHandler(handlePayPalWebhook));
+  
+  // Payment recovery routes
+  app.post("/api/payments/retry/:orderId", authenticateUser, asyncHandler(async (req: Request, res: Response) => {
+    const { orderId } = req.params;
+    const result = await retryFailedPayment(orderId);
+    sendSuccess(res, result);
+  }));
+
+  // Token refresh route
+  app.post("/api/auth/refresh", asyncHandler(async (req: Request, res: Response) => {
+    const token = req.cookies?.auth_token;
+    
+    if (!token) {
+      throw new AppError("No token provided", 401, "NO_TOKEN");
+    }
+    
+    try {
+      const decoded = JSON.parse(Buffer.from(token, 'base64').toString());
+      const user = await storage.getUser(decoded.userId);
+      
+      if (!user) {
+        throw new AppError("Invalid token", 401, "INVALID_TOKEN");
+      }
+      
+      // Check if token is older than 7 days, refresh it
+      const tokenAge = Date.now() - (decoded.iat || 0);
+      const sevenDays = 7 * 24 * 60 * 60 * 1000;
+      
+      if (tokenAge > sevenDays) {
+        // Issue new token
+        const newToken = Buffer.from(JSON.stringify({
+          userId: user.id,
+          email: user.email,
+          iat: Date.now()
+        })).toString('base64');
+        
+        res.cookie('auth_token', newToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict',
+          maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+        });
+      }
+      
+      const { password, ...userWithoutPassword } = user;
+      sendSuccess(res, { user: userWithoutPassword }, "Token refreshed");
+    } catch (error) {
+      throw new AppError("Invalid token", 401, "INVALID_TOKEN");
+    }
+  }));
 
   const httpServer = createServer(app);
   return httpServer;

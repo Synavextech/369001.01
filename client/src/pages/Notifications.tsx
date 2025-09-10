@@ -1,4 +1,14 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { Notification } from "@shared/schema";
+
+interface NotificationType {
+  id: number;
+  type: 'task' | 'payment' | 'subscription' | 'system';
+  title: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+}
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -9,7 +19,7 @@ export default function Notifications() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const { data: notifications } = useQuery<any[]>({
+  const { data: notifications = [] } = useQuery<NotificationType[]>({
     queryKey: [`/api/users/${user?.id}/notifications`],
     enabled: !!user?.id,
   });
@@ -29,7 +39,7 @@ export default function Notifications() {
     },
   });
 
-  const getNotificationIcon = (type: string) => {
+  const getNotificationIcon = (type: NotificationType['type']) => {
     switch (type) {
       case "task":
         return "✅";
@@ -44,7 +54,7 @@ export default function Notifications() {
     }
   };
 
-  const getNotificationColor = (type: string) => {
+  const getNotificationColor = (type: NotificationType['type']) => {
     switch (type) {
       case "task":
         return "border-success";
@@ -69,7 +79,7 @@ export default function Notifications() {
 
         <div className="space-y-4">
           {notifications?.length > 0 ? (
-            notifications.map((notification: any) => (
+            notifications.map((notification) => (
               <Card
                 key={notification.id}
                 className={`border-l-4 ${getNotificationColor(notification.type)} ${

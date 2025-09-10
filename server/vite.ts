@@ -11,7 +11,7 @@ let nanoid: typeof import('nanoid').nanoid | undefined;
 
 if (process.env.NODE_ENV === "development") {
   ({ createServer: createViteServer, createLogger } = await import("vite"));
-  viteConfig = (await import("../vite.config")).default;
+  viteConfig = (await import("../vite.config.js" as any)).default;
   ({ nanoid } = await import("nanoid"));
 }
 

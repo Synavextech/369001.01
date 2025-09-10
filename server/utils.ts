@@ -1,12 +1,18 @@
 import crypto from 'crypto';
+import bcrypt from 'bcrypt';
 
 export function generateReferralCode(): string {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
-export function hashPassword(password: string): string {
-  // In production, use bcrypt or similar secure hashing
-  return crypto.createHash('sha256').update(password).digest('hex');
+export async function hashPassword(password: string): Promise<string> {
+  // Use bcrypt with cost factor of 12 (≥ 10 as required)
+  const saltRounds = 12;
+  return await bcrypt.hash(password, saltRounds);
+}
+
+export async function verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
+  return await bcrypt.compare(password, hashedPassword);
 }
 
 export function validatePhone(phone: string): boolean {

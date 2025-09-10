@@ -1,4 +1,32 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { Wallet, Transaction, Withdrawal, PaymentMethod } from "@shared/schema";
+
+interface WalletData {
+  availableBalance: string;
+  pendingBalance: string;
+  totalEarnings: string;
+}
+
+interface TransactionType extends Omit<Transaction, 'createdAt'> {
+  type: 'earning' | 'withdrawal' | 'referral' | 'subscription';
+  status: 'completed' | 'failed' | 'pending';
+  amount: string;
+  description: string | null;
+  createdAt: Date;
+}
+
+interface WithdrawalType extends Omit<Withdrawal, 'createdAt'> {
+  status: 'completed' | 'failed' | 'pending';
+  amount: string;
+  createdAt: Date;
+  phoneNumber?: string;
+}
+
+interface PaymentMethodType extends PaymentMethod {
+  id: number;
+  email: string;
+  isPrimary: boolean;
+}
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -37,34 +65,39 @@ export default function Wallet() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: wallet } = useQuery<any>({
+  const { data: wallet = { availableBalance: "0", pendingBalance: "0", totalEarnings: "0" } } = useQuery<WalletData>({
     queryKey: [`/api/users/${user?.id}/wallet`],
     enabled: !!user?.id,
   });
 
-  const { data: transactions } = useQuery<any[]>({
+  const { data: transactions = [] } = useQuery<TransactionType[]>({
     queryKey: [`/api/users/${user?.id}/transactions`],
     enabled: !!user?.id,
   });
 
-  const { data: withdrawals } = useQuery<any[]>({
+  const { data: withdrawals = [] } = useQuery<WithdrawalType[]>({
     queryKey: [`/api/withdrawals/${user?.id}`],
     enabled: !!user?.id && showWithdrawals,
   });
 
-  const { data: paymentMethods } = useQuery<any[]>({
+  const { data: paymentMethods = [] } = useQuery<PaymentMethodType[]>({
     queryKey: [`/api/users/${user?.id}/payment-methods`],
     enabled: !!user?.id,
   });
 
-  const withdrawForm = useForm<InsertWithdrawal>({
+  interface WithdrawalFormData extends InsertWithdrawal {
+    paymentMethodId?: number;
+  }
+
+  const withdrawForm = useForm<WithdrawalFormData>({
     resolver: zodResolver(
       insertWithdrawalSchema.extend({
-        paymentMethodId: z.number().optional(),
-      }),
+        paymentMethodId: z.number().optional().nullable(),
+      })
     ),
     defaultValues: {
       amount: "0",
+      paymentMethodId: undefined,
     },
   });
 
@@ -171,9 +204,7 @@ export default function Wallet() {
     },
   });
 
-  const onWithdraw = (
-    data: InsertWithdrawal & { paymentMethodId?: number },
-  ) => {
+  const onWithdraw = (data: WithdrawalFormData) => {
     const amount = parseFloat(data.amount);
     const available = parseFloat(wallet?.availableBalance || "0");
 
@@ -325,7 +356,7 @@ export default function Wallet() {
                     }
                   >
                     {paymentMethods?.length > 0 ? (
-                      paymentMethods.map((method: any) => (
+                      paymentMethods.map((method) => (
                         <div
                           key={method.id}
                           className="flex items-center space-x-2 mb-2"
@@ -399,7 +430,7 @@ export default function Wallet() {
                 {/* Existing Payment Methods */}
                 <div className="space-y-2">
                   {paymentMethods?.length > 0 ? (
-                    paymentMethods.map((method: any) => (
+                    paymentMethods.map((method) => (
                       <div
                         key={method.id}
                         className="flex items-center justify-between p-3 border rounded-lg"
@@ -512,7 +543,7 @@ export default function Wallet() {
             <CardContent>
               <div className="space-y-4">
                 {withdrawals?.length > 0 ? (
-                  withdrawals.map((withdrawal: any) => (
+                  withdrawals.map((withdrawal) => (
                     <div
                       key={withdrawal.id}
                       className="flex items-center justify-between p-4 border rounded-lg"
@@ -525,7 +556,7 @@ export default function Wallet() {
                           {withdrawal.phoneNumber}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {new Date(withdrawal.createdAt).toLocaleDateString()}
+                          {withdrawal.createdAt.toLocaleDateString()}
                         </p>
                       </div>
                       <Badge className={getStatusColor(withdrawal.status)}>
@@ -551,7 +582,7 @@ export default function Wallet() {
           <CardContent>
             <div className="space-y-4">
               {transactions?.length > 0 ? (
-                transactions.slice(0, 10).map((transaction: any) => (
+                transactions.slice(0, 10).map((transaction) => (
                   <div
                     key={transaction.id}
                     className="flex items-center justify-between p-4 border rounded-lg"
@@ -568,7 +599,7 @@ export default function Wallet() {
                           {transaction.description}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {new Date(transaction.createdAt).toLocaleDateString()}
+                          {transaction.createdAt.toLocaleDateString()}
                         </p>
                       </div>
                     </div>

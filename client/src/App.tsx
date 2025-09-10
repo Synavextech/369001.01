@@ -7,6 +7,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { PWAInstall } from "@/components/PWAInstall";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { ErrorBoundary, AsyncErrorBoundary } from "@/components/ErrorBoundary";
+import { PageLoader } from "@/components/LoadingSpinner";
 import Landing from "@/pages/Landing";
 import Auth from "@/pages/Auth";
 import { Orientation } from "@/pages/Orientation";
@@ -24,11 +26,7 @@ function AppRouter() {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="spinner w-8 h-8"></div>
-      </div>
-    );
+    return <PageLoader text="Loading your account..." />;
   }
 
   // Check user status
@@ -85,17 +83,21 @@ function AppRouter() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <ThemeProvider>
-          <TooltipProvider>
-            <PWAInstall />
-            <Toaster />
-            <AppRouter />
-          </TooltipProvider>
-        </ThemeProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <AsyncErrorBoundary>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <ThemeProvider>
+              <TooltipProvider>
+                <PWAInstall />
+                <Toaster />
+                <AppRouter />
+              </TooltipProvider>
+            </ThemeProvider>
+          </AuthProvider>
+        </QueryClientProvider>
+      </AsyncErrorBoundary>
+    </ErrorBoundary>
   );
 }
 

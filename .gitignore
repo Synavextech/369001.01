@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.kilocode/
+*.tar.gz
+.env.*
+.schema.sql.*
+.htaccess.*
+.SETUP_GUIDE.md.*
+.vscode/

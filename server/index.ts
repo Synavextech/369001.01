@@ -11,9 +11,25 @@ import { fileURLToPath } from 'node:url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+
+// Import middleware
+import {
+  globalErrorHandler,
+  corsOptions,
+  requestLogger,
+  sanitizeInput,
+  apiRateLimit
+} from "./middleware";
+import cors from "cors";
+
+// Apply middleware in correct order
+app.use(cors(corsOptions));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 app.use(cookieParser());
+app.use(requestLogger);
+app.use(sanitizeInput);
+app.use('/api', apiRateLimit);
 (async () => {
   let log = console.log;  // Default to console.log (prod-safe, no 'vite' needed)
   
@@ -47,12 +63,8 @@ app.use(cookieParser());
     });
   }
   
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-    res.status(status).json({ message });
-    throw err;
-  });
+  // Use global error handler
+  app.use(globalErrorHandler);
   // Now define the logging middleware after log is set
   app.use((req, res, next) => {
     const start = Date.now();

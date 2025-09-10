@@ -1,6 +1,6 @@
 import { users, subscriptions, tasks, userTasks, wallets, transactions, withdrawals, notifications, orders, paymentMethods, type User, type InsertUser, type LoginCredentials, type Subscription, type InsertSubscription, type Task, type InsertTask, type UserTask, type InsertUserTask, type Wallet, type Transaction, type Withdrawal, type InsertWithdrawal, type Notification, type Order, type InsertOrder, type PaymentMethod, type InsertPaymentMethod } from "@shared/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
-import { generateReferralCode as generateRefCode, hashPassword as hashPasswordUtil } from "./utils";
+import { generateReferralCode as generateRefCode, hashPassword as hashPasswordUtil, verifyPassword } from "./utils";
 
 export interface IStorage {
   // User management
@@ -94,17 +94,19 @@ export class MemStorage implements IStorage {
     this.orders = new Map();
     this.paymentMethods = new Map();
     this.currentId = 1;
-    this.seedData();
+    // Initialize seed data asynchronously
+    this.seedData().catch(console.error);
   }
 
-  private seedData() {
-    // Create sample admin user
+  private async seedData() {
+    // Create sample admin user with hashed password
+    const hashedPassword = await hashPasswordUtil("12345678");
     const adminUser: User = {
       id: this.currentId++,
       name: "Admin User",
       phone: "+254700000001",
       email: "admin@promog.com",
-      password: hashPasswordUtil("12345678"),
+      password: hashedPassword,
       gender: "geek",
       role: "admin",
       subscriptionTier: "vip",
@@ -345,11 +347,12 @@ export class MemStorage implements IStorage {
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.currentId++;
     const referralCode = generateRefCode();
+    const hashedPassword = await hashPasswordUtil(insertUser.password);
     const user: User = {
       ...insertUser,
       id,
       phone: insertUser.phone || null,
-      password: hashPasswordUtil(insertUser.password),
+      password: hashedPassword,
       role: "user",
       subscriptionTier: null,
       subscriptionExpiry: null,
@@ -387,9 +390,15 @@ export class MemStorage implements IStorage {
 
   async authenticateUser(credentials: LoginCredentials): Promise<User | undefined> {
     const user = await this.getUserByEmail(credentials.email);
-    if (!user || user.password !== hashPasswordUtil(credentials.password)) {
+    if (!user) {
       return undefined;
     }
+    
+    const isValidPassword = await verifyPassword(credentials.password, user.password);
+    if (!isValidPassword) {
+      return undefined;
+    }
+    
     return user;
   }
 

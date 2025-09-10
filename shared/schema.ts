@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, decimal, json, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, decimal, json, pgEnum, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -16,7 +16,7 @@ export const orderStatusEnum = pgEnum('order_status', ['pending', 'completed', '
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
-  phone: text("phone"),
+  phone: varchar("phone", { length: 16 }), // VARCHAR(16) for E.164 format (max 15 digits + '+')
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
   gender: genderEnum("gender").notNull(),
@@ -149,10 +149,23 @@ export const insertUserSchema = createInsertSchema(users).omit({
   referralCode: true,
   role: true,
 }).extend({
-  confirmPassword: z.string().length(8, "Password must be exactly 8 characters"),
+  confirmPassword: z.string().min(8, "Password must be at least 8 characters"),
+  phone: z.string().regex(/^\+[1-9]\d{1,14}$/, "Phone number must be in E.164 format (e.g., +1234567890)").optional().or(z.literal("")),
 }).refine(data => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
+}).refine(data => {
+  // Enhanced password validation
+  const password = data.password;
+  const hasUpperCase = /[A-Z]/.test(password);
+  const hasLowerCase = /[a-z]/.test(password);
+  const hasNumbers = /\d/.test(password);
+  const hasSpecialChar = /[^A-Za-z0-9]/.test(password);
+  
+  return hasUpperCase && hasLowerCase && hasNumbers && hasSpecialChar;
+}, {
+  message: "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character",
+  path: ["password"],
 });
 
 export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({
@@ -196,7 +209,7 @@ export const insertPaymentMethodSchema = createInsertSchema(paymentMethods).omit
 
 export const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
-  password: z.string().length(8, "Password must be exactly 8 characters"),
+  password: z.string().min(1, "Password is required"),
 });
 
 // Types

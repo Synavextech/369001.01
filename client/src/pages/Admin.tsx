@@ -1,4 +1,14 @@
+// Importing required types
+import { type User, type Task, type Withdrawal, type UserTask } from "@shared/schema";
 import { useState } from "react";
+
+// Define interface for stats
+interface Stats {
+  totalUsers: number;
+  activeSubscriptions: number;
+  totalEarnings: string;
+  totalTasks: number;
+}
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,19 +32,19 @@ export default function Admin() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: stats } = useQuery({
+  const { data: stats = { totalUsers: 0, activeSubscriptions: 0, totalEarnings: '0', totalTasks: 0 } } = useQuery<Stats>({
     queryKey: ['/api/admin/stats'],
   });
 
-  const { data: users } = useQuery({
+  const { data: users = [] } = useQuery<User[]>({
     queryKey: ['/api/admin/users'],
   });
 
-  const { data: pendingTasks } = useQuery({
+  const { data: pendingTasks = [] } = useQuery<UserTask[]>({
     queryKey: ['/api/admin/tasks/pending'],
   });
 
-  const { data: withdrawals } = useQuery({
+  const { data: withdrawals = [] } = useQuery<Withdrawal[]>({
     queryKey: ['/api/admin/withdrawals'],
   });
 
@@ -211,7 +221,7 @@ export default function Admin() {
                   <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stats?.totalUsers || 0}</div>
+                  <div className="text-2xl font-bold">{stats.totalUsers}</div>
                 </CardContent>
               </Card>
               
@@ -221,7 +231,7 @@ export default function Admin() {
                   <UserCheck className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stats?.activeSubscriptions || 0}</div>
+                  <div className="text-2xl font-bold">{stats.activeSubscriptions}</div>
                 </CardContent>
               </Card>
               
@@ -231,7 +241,7 @@ export default function Admin() {
                   <DollarSign className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">KES {parseFloat(stats?.totalEarnings || '0').toLocaleString()}</div>
+                  <div className="text-2xl font-bold">KES {parseFloat(stats.totalEarnings).toLocaleString()}</div>
                 </CardContent>
               </Card>
               
@@ -241,7 +251,7 @@ export default function Admin() {
                   <ClipboardList className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stats?.totalTasks || 0}</div>
+                  <div className="text-2xl font-bold">{stats.totalTasks}</div>
                 </CardContent>
               </Card>
             </div>

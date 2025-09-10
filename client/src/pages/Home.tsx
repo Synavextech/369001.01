@@ -1,19 +1,28 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+
+interface Wallet {
+  totalEarnings: string;
+}
+
+interface Notification {
+  isRead: boolean;
+}
 
 export default function Home() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
 
-  const { data: wallet } = useQuery<any>({
+  const { data: wallet } = useQuery<Wallet>({
     queryKey: [`/api/users/${user?.id}/wallet`],
     enabled: !!user?.id,
   });
 
-  const { data: notifications } = useQuery<any[]>({
+  const { data: notifications } = useQuery<Notification[]>({
     queryKey: [`/api/users/${user?.id}/notifications`],
     enabled: !!user?.id,
   });
