@@ -5,4 +5,5 @@ dist/
 .env*
 .schema.sql*
 .SETUP_GUIDE.md*
+.gitignore
 .vscode/
