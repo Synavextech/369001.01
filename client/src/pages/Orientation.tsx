@@ -8,10 +8,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, Circle, Lock, ExternalLink, Clock, Coins, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Task } from "@shared/schema";
 import { ComponentLoader } from "@/components/LoadingSpinner";
 import { withOfflineSupport } from "@/lib/offlineStorage";
+import { useAuth } from "@/hooks/useAuth";
 
 const categoryInfo = {
   main: { title: "Main Tasks", description: "Essential platform tasks" },
@@ -24,7 +25,8 @@ const categoryInfo = {
 export function Orientation() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const [viewedTasks, setViewedTasks] = useState<Set<number>>(new Set());
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [hasReviewed, setHasReviewed] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
@@ -47,6 +49,46 @@ export function Orientation() {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
+  // Mutation to complete orientation tasks
+  const completeTaskMutation = useMutation({
+    mutationFn: async ({ taskId, category }: { taskId: number; category: string }) => {
+      if (!user?.id) throw new Error('User not authenticated');
+      
+      const response = await fetch('/api/orientation/complete-task', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          taskId,
+          category,
+        }),
+      });
+      
+      if (!response.ok) throw new Error('Failed to complete task');
+      return response.json();
+    },
+    onSuccess: (data) => {
+      // Update user data in auth context with new orientation status
+      if (user && data.orientationStatus) {
+        const updatedUser = { ...user, orientationStatus: data.orientationStatus };
+        queryClient.setQueryData(['user', user.id], updatedUser);
+      }
+      toast({
+        title: "Task Completed!",
+        description: "Your progress has been saved.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to complete task. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Group tasks by category
   const tasksByCategory = tasks.reduce((acc, task) => {
     if (!acc[task.category]) {
@@ -56,13 +98,68 @@ export function Orientation() {
     return acc;
   }, {} as Record<string, Task[]>);
 
-  // Calculate if all tasks have been viewed
-  const allTasksViewed = tasks.length > 0 && viewedTasks.size === tasks.length;
-  const canProceed = allTasksViewed && hasReviewed;
+  // Get user's orientation status
+  const orientationStatus = user?.orientationStatus as any || {
+    main: { completedTasks: [], isCompleted: false },
+    social: { completedTasks: [], isCompleted: false },
+    surveys: { completedTasks: [], isCompleted: false },
+    testing: { completedTasks: [], isCompleted: false },
+    ai: { completedTasks: [], isCompleted: false },
+    overallCompleted: false
+  };
 
-  const handleTaskView = (task: Task) => {
+  // Calculate completion status
+  const getCompletedTasksForCategory = (category: string) => {
+    return orientationStatus[category]?.completedTasks || [];
+  };
+
+  const getCategoryCompletionCount = (category: string) => {
+    return getCompletedTasksForCategory(category).length;
+  };
+
+  const isCategoryCompleted = (category: string) => {
+    return getCategoryCompletionCount(category) >= 2;
+  };
+
+  const isTaskCompleted = (taskId: number, category: string) => {
+    return getCompletedTasksForCategory(category).includes(taskId);
+  };
+
+  // Check if all categories have at least 2 completed tasks
+  const allCategoriesCompleted = Object.keys(categoryInfo).every(category =>
+    isCategoryCompleted(category)
+  );
+  
+  const canProceed = allCategoriesCompleted && hasReviewed;
+
+  const handleTaskComplete = async (task: Task) => {
+    if (!user?.id) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to complete tasks.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if task is already completed
+    if (isTaskCompleted(task.id, task.category)) {
+      setSelectedTask(task);
+      return;
+    }
+
+    // Check if category already has 2 completed tasks
+    if (getCategoryCompletionCount(task.category) >= 2) {
+      toast({
+        title: "Category Complete",
+        description: `You've already completed 2 tasks in the ${categoryInfo[task.category as keyof typeof categoryInfo]?.title} category.`,
+      });
+      setSelectedTask(task);
+      return;
+    }
+
     setSelectedTask(task);
-    setViewedTasks(prev => new Set(Array.from(prev).concat(task.id)));
+    completeTaskMutation.mutate({ taskId: task.id, category: task.category });
   };
 
   const handleProceedToSubscription = () => {
@@ -125,12 +222,12 @@ export function Orientation() {
             Note: This is a temporary review process that does not save data to the database.
           </p>
           <div className="mt-4">
-            <Progress 
-              value={(viewedTasks.size / Math.max(tasks.length, 1)) * 100} 
+            <Progress
+              value={(Object.keys(categoryInfo).filter(cat => isCategoryCompleted(cat)).length / Object.keys(categoryInfo).length) * 100}
               className="h-2"
             />
             <p className="text-sm text-muted-foreground mt-2">
-              {viewedTasks.size} of {tasks.length} tasks viewed
+              {Object.keys(categoryInfo).filter(cat => isCategoryCompleted(cat)).length} of {Object.keys(categoryInfo).length} categories completed
             </p>
           </div>
         </div>
@@ -146,27 +243,30 @@ export function Orientation() {
                   <h2 className="text-xl font-semibold">
                     {categoryInfo[category as keyof typeof categoryInfo]?.title}
                   </h2>
-                  <Badge variant="outline">
-                    {categoryTasks.filter(t => viewedTasks.has(t.id)).length}/{categoryTasks.length} viewed
+                  <Badge variant={isCategoryCompleted(category) ? "default" : "outline"}>
+                    {getCategoryCompletionCount(category)}/2 completed
                   </Badge>
                 </div>
                 
                 <div className="grid gap-3">
                   {categoryTasks.map(task => (
-                    <Card 
+                    <Card
                       key={task.id}
                       className={`cursor-pointer transition-all ${
-                        viewedTasks.has(task.id) ? 'opacity-75' : 'hover:shadow-md'
+                        isTaskCompleted(task.id, task.category) ? 'opacity-75 bg-green-50 dark:bg-green-950' : 'hover:shadow-md'
                       } ${selectedTask?.id === task.id ? 'ring-2 ring-primary' : ''}`}
-                      onClick={() => handleTaskView(task)}
+                      onClick={() => handleTaskComplete(task)}
                     >
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
                               <h3 className="font-medium">{task.title}</h3>
-                              {viewedTasks.has(task.id) && (
+                              {isTaskCompleted(task.id, task.category) && (
                                 <CheckCircle2 className="h-4 w-4 text-green-500" />
+                              )}
+                              {getCategoryCompletionCount(task.category) >= 2 && !isTaskCompleted(task.id, task.category) && (
+                                <Lock className="h-4 w-4 text-muted-foreground" />
                               )}
                             </div>
                             <p className="text-sm text-muted-foreground mt-1">
@@ -204,24 +304,24 @@ export function Orientation() {
           <Card className="bg-muted/50">
             <CardContent className="p-4">
               <div className="flex items-start space-x-3">
-                <Checkbox 
+                <Checkbox
                   id="reviewed"
                   checked={hasReviewed}
                   onCheckedChange={(checked) => setHasReviewed(!!checked)}
-                  disabled={!allTasksViewed}
+                  disabled={!allCategoriesCompleted}
                 />
                 <div className="space-y-1">
-                  <label 
-                    htmlFor="reviewed" 
+                  <label
+                    htmlFor="reviewed"
                     className={`text-sm font-medium leading-none ${
-                      !allTasksViewed ? 'text-muted-foreground' : 'cursor-pointer'
+                      !allCategoriesCompleted ? 'text-muted-foreground' : 'cursor-pointer'
                     }`}
                   >
-                    I have reviewed all the orientation tasks
+                    I have completed the orientation requirements (2 tasks per category)
                   </label>
-                  {!allTasksViewed && (
+                  {!allCategoriesCompleted && (
                     <p className="text-xs text-muted-foreground">
-                      Please view all tasks above before checking this box
+                      Please complete at least 2 tasks in each category before checking this box
                     </p>
                   )}
                 </div>
@@ -229,21 +329,26 @@ export function Orientation() {
             </CardContent>
           </Card>
 
-          <Button 
+          <Button
             onClick={handleProceedToSubscription}
-            disabled={!canProceed}
+            disabled={!canProceed || completeTaskMutation.isPending}
             className="w-full"
             size="lg"
           >
-            {!allTasksViewed ? (
+            {!allCategoriesCompleted ? (
               <>
                 <Lock className="mr-2 h-4 w-4" />
-                View All Tasks First
+                Complete 2 Tasks Per Category
               </>
             ) : !hasReviewed ? (
               <>
                 <Lock className="mr-2 h-4 w-4" />
                 Check the Box Above
+              </>
+            ) : completeTaskMutation.isPending ? (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                Processing...
               </>
             ) : (
               "Proceed to Subscription"

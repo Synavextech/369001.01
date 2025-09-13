@@ -11,4 +11,14 @@ export default defineConfig({
   dbCredentials: {
     url: process.env.DATABASE_URL,
   },
+  verbose: true,
+  strict: true,
+  migrations: {
+    prefix: "supabase",
+    table: "__drizzle_migrations__",
+    schema: "public",
+  },
+  introspect: {
+    casing: "preserve",
+  },
 });

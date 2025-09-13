@@ -23,14 +23,14 @@ export default function Landing() {
       <div className="hero-bg relative min-h-screen bg-gradient-to-br from-accent to-primary flex items-center justify-center">
         <div className="absolute inset-0 bg-black bg-opacity-40"></div>
         <div className="relative z-10 text-center px-6 max-w-4xl animate-fade-in">
-          <h1 className="text-5xl md:text-7xl font-bold text-white mb-6">
-            Welcome to <span className="text-yellow-400">ProMo-G</span>
-          </h1>
+          <h3 className="text-5xl md:text-7xl font-bold text-white mb-6">
+            Welcome to <span className="text-yellow-400">Promo-G Platform</span>
+          </h3>
           <p className="text-xl md:text-2xl text-white mb-4">
-            Here every scroll 👨🏽‍💻, swipe 🤳🏼, and Every Tap pays 💱
+            Here every scroll 👨🏽‍💻, swipe & Tap 🤳🏼 pays 💱
           </p>
           <p className="text-lg text-gray-200 mb-8">
-            You scroll every day for no pay, 🥱 Now, Here is a chance to earn
+            You scroll every day for no pay, 🥱 Now, earn
             with every scroll/swipe 🤑
           </p>
 
@@ -57,10 +57,8 @@ export default function Landing() {
               }}
             >
               <p style={{ fontSize: "1rem", lineHeight: "1.6" }}>
-                The tasks we manage involve specific skill sets tailored to the
-                evolving needs of our clients ranging from; AI training, app and
-                website testing, surveys and polls, to social media engagement
-                and staying aligned with current tech trends.
+                We are a Premier AI Training & Web Testing Thinktank working to join our elite team of taskers in a dynamic in-house environment, where we purify data, train cutting-edge models, and deliver rigorous testing for apps, websites, and systems—elevating innovation in a collaborative, high-impact workspace.
+                The tasks we manage involve specific skill sets tailored to the needs of our clients which entail;; AI training, app & website testing, surveys and polls, to social media engagement and staying aligned with current tech trends.
               </p>
             </div>
 
@@ -73,24 +71,6 @@ export default function Landing() {
                 flexWrap: "wrap",
               }}
             >
-              <div
-                style={{
-                  flex: "1 1 300px",
-                  background: "#8a7637",
-                  borderRadius: "12px",
-                  padding: "1rem",
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-                }}
-              >
-                <p style={{ fontSize: "0.95rem", lineHeight: "1.5" }}>
-                  To ensure high-quality service delivery and optimal use of
-                  various advanced, cloud based tools; many of which come with
-                  significant operational costs. In some cases, a nominal fee
-                  might apply. These sessions are typically one-time, though
-                  participants may be informed of future opportunities to
-                  upskill as needed.
-                </p>
-              </div>
               <div
                 style={{
                   flex: "1 1 300px",
@@ -134,6 +114,7 @@ export default function Landing() {
                 }}
               >
                 Growing Together, Delivering Excellence.
+                <p>Everything Good for Humanity</p>
               </span>
             </div>
           </section>
@@ -163,11 +144,7 @@ export default function Landing() {
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-bold mb-6">About ProMo-G</h2>
           <p className="text-lg text-muted-foreground max-w-4xl mx-auto">
-            We are a digital marketing platform representing major software
-            companies and platforms to achieve In-person review of their newly
-            developed systems. We are looking for Geeks 🤓 With proficient
-            skills in AI training, App/website testing and review, Survey/Polls
-            & Social Media Engagement.
+          We are a Premier AI Training & Web Testing Thinktank representing major software companies and platforms to achieve In-person review of their newly developed systems. We are looking for Geeks 🤓 With proficient skills in AI training, App/website testing and review, Survey/Polls & Social Media Engagement.
           </p>
         </div>
 
@@ -175,21 +152,13 @@ export default function Landing() {
           <div className="team-image h-64 md:h-80 rounded-xl shadow-lg"></div>
           <div>
             <h3 className="text-2xl font-bold mb-4">
-              We harness the Power of Network Marketing to achieve efficient and
-              seamless Digital Marketing
+              We harness the Power of Network Marketing to achieve, an efficient and seamless Client and customer reach with minimal costd and control, maximizing ytour incoming while minimizing out clioents costs.
             </h3>
             <p className="text-muted-foreground mb-6">
-              Network marketing is not just about referrals! It is about
-              building powerful money making ecosystems. By leveraging the
-              proven dynamics of network marketing, through structured sharing,
-              incentive actions, and word-of-mouth amplification, to create a
-              money-making network.
+              Network marketing is not just about referrals! It is about building powerful money making ecosystems. By leveraging the proven dynamics of network marketing, through structured sharing, incentive actions, and word-of-mouth amplification, to create a money-making network.
             </p>
             <p className="text-muted-foreground">
-              We created cutting-edge digital systems to track, reward, and
-              optimize every interaction turning clicks into conversions, shares
-              into sales, and networks into value. Best of all, we reward you
-              every step of the way.
+              We run a cutting-edge digital systems that track, reward, and optimize every interaction turning clicks into conversions, shares into sales, and networks into value. Best of all!, We Reward you Every step of the Way.
             </p>
           </div>
         </div>

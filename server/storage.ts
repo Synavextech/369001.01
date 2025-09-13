@@ -765,4 +765,9 @@ function hashPin(pin: string): string {
   return `hashed_${pin}`;
 }
 
-export const storage = new MemStorage();
+import { DatabaseStorage } from "./database-storage";
+
+// Use database storage in production, memory storage for development/testing
+export const storage = process.env.NODE_ENV === 'production' || process.env.USE_DATABASE === 'true'
+  ? new DatabaseStorage()
+  : new MemStorage();

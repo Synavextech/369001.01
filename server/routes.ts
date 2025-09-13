@@ -59,6 +59,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const user = await storage.createUser(userData);
     const { password, ...userWithoutPassword } = user;
 
+    // Send welcome email (don't block registration if email fails)
+    try {
+      const { emailService } = await import('./email');
+      await emailService.sendWelcomeEmail(user.email, user.name);
+    } catch (error) {
+      console.error('Failed to send welcome email:', error);
+    }
+
     sendSuccess(res, { user: userWithoutPassword }, "User registered successfully", 201);
   }));
 
